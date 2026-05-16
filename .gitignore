@@ -9,6 +9,12 @@ Cargo.lock
 /app/.dart_tool/
 /app/build/
 /app/.packages
+/app/.metadata
+/app/linux/
+/app/macos/
+/app/windows/
+/app/test/
+/app/.gitignore
 
 # IDEs
 .idea/
