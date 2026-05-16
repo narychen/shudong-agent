@@ -1,0 +1,28 @@
+# Rust
+/core/target/
+Cargo.lock
+*.rlib
+*.so
+*.dylib
+
+# Flutter
+/app/.dart_tool/
+/app/build/
+/app/.packages
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# macOS
+.DS_Store
+*.xcworkspace/
+
+# Build artifacts
+*.o
+*.a
+*.so.*
