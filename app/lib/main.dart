@@ -264,13 +264,18 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shudong Agent'),
-        subtitle: Text(
-          _status,
-          style: TextStyle(
-            fontSize: 12,
-            color: _initialized ? Colors.green : Colors.orange,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Shudong Agent'),
+            Text(
+              _status,
+              style: TextStyle(
+                fontSize: 12,
+                color: _initialized ? Colors.green : Colors.orange,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
