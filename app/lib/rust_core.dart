@@ -17,12 +17,20 @@ typedef _NativeFreeFn = Void Function(Pointer<Utf8>);
 typedef _DartFreeFn = void Function(Pointer<Utf8>);
 
 class RustCore {
-  RustCore._(this._init, this._processTask, this._getStatus, this._getLastError, this._freeString);
+  RustCore._(
+    this._init,
+    this._processTask,
+    this._getStatus,
+    this._getLastError,
+    this._clearHistory,
+    this._freeString,
+  );
 
   final _DartInitFn _init;
   final _DartStringFn _processTask;
   final _DartStatusFn _getStatus;
   final _DartStatusFn _getLastError;
+  final _DartStatusFn _clearHistory;
   final _DartFreeFn _freeString;
 
   static RustCore? _instance;
@@ -46,6 +54,7 @@ class RustCore {
       dylib.lookupFunction<_NativeStringFn, _DartStringFn>('shudong_process_task'),
       dylib.lookupFunction<_NativeStatusFn, _DartStatusFn>('shudong_get_status'),
       dylib.lookupFunction<_NativeStatusFn, _DartStatusFn>('shudong_get_last_error'),
+      dylib.lookupFunction<_NativeStatusFn, _DartStatusFn>('shudong_clear_history'),
       dylib.lookupFunction<_NativeFreeFn, _DartFreeFn>('shudong_string_free'),
     );
     _instance = core;
@@ -79,10 +88,11 @@ class RustCore {
     }
   }
 
-  String getStatus() {
+  Map<String, dynamic> getStatus() {
     final output = _getStatus();
     try {
-      return output.toDartString();
+      final result = output.toDartString();
+      return jsonDecode(result) as Map<String, dynamic>;
     } finally {
       _freeString(output);
     }
@@ -92,6 +102,16 @@ class RustCore {
     final output = _getLastError();
     try {
       return output.toDartString();
+    } finally {
+      _freeString(output);
+    }
+  }
+
+  Map<String, dynamic> clearHistory() {
+    final output = _clearHistory();
+    try {
+      final result = output.toDartString();
+      return jsonDecode(result) as Map<String, dynamic>;
     } finally {
       _freeString(output);
     }

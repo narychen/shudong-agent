@@ -58,7 +58,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void _checkStatus() {
     try {
       final core = RustCore.instance;
-      final status = jsonDecode(core.getStatus()) as Map<String, dynamic>;
+      final status = core.getStatus();
       setState(() {
         _initialized = status['initialized'] == true;
         _status = _initialized ? 'Ready' : 'Not initialized';
@@ -82,7 +82,7 @@ class _MyHomePageState extends State<MyHomePage> {
       'provider': _selectedProvider,
       'api_key': _apiKeyController.text.trim(),
       'model': _selectedModel,
-      'system_prompt': '你是一个专业的编码助手，擅长分析代码、提供优化建议、执行开发任务。请用中文回复。',
+      'system_prompt': '你是一个专业的编码助手。你可以使用以下工具来完成任务：\n- read_file(path): 读取文件内容\n- write_file(path, content): 写入文件\n- search_code(pattern): 搜索代码\n- execute_shell(command): 执行Shell命令\n\n当用户要求你做某事时，先思考需要使用哪些工具，然后调用工具完成任务。',
     };
 
     setState(() {
@@ -97,6 +97,9 @@ class _MyHomePageState extends State<MyHomePage> {
         _initialized = result['success'] == true;
         _status = _initialized ? 'Agent initialized successfully' : 'Init failed: ${result['error']}';
         _busy = false;
+        if (_initialized) {
+          _messages.clear();
+        }
       });
     } catch (error) {
       setState(() {
@@ -120,24 +123,28 @@ class _MyHomePageState extends State<MyHomePage> {
       _messages.add({'role': 'user', 'content': task});
     });
     _controller.clear();
+    _scrollToBottom();
 
     try {
       final core = RustCore.instance;
       final result = core.processTask(task);
       
       if (result['success'] == true) {
+        final response = result['response'] ?? 'No response';
         setState(() {
-          _messages.add({'role': 'assistant', 'content': result['response']});
+          _messages.add({'role': 'assistant', 'content': response});
           _status = 'Ready';
         });
       } else {
         setState(() {
           _status = 'Error: ${result['error']}';
+          _messages.add({'role': 'error', 'content': 'Error: ${result['error']}'});
         });
       }
     } catch (error) {
       setState(() {
         _status = 'Error: $error';
+        _messages.add({'role': 'error', 'content': 'Error: $error'});
       });
     } finally {
       setState(() {
@@ -158,6 +165,21 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       }
     });
+  }
+
+  void _clearHistory() {
+    try {
+      final core = RustCore.instance;
+      core.clearHistory();
+      setState(() {
+        _messages.clear();
+        _status = 'History cleared';
+      });
+    } catch (e) {
+      setState(() {
+        _status = 'Error clearing history: $e';
+      });
+    }
   }
 
   void _showSettings() {
@@ -243,7 +265,19 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Shudong Agent'),
+        subtitle: Text(
+          _status,
+          style: TextStyle(
+            fontSize: 12,
+            color: _initialized ? Colors.green : Colors.orange,
+          ),
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _messages.isEmpty ? null : _clearHistory,
+            tooltip: 'Clear history',
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: _showSettings,
@@ -300,6 +334,14 @@ class _MyHomePageState extends State<MyHomePage> {
                                 color: Colors.grey.shade600,
                               ),
                         ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'The agent can read files, write files,\nsearch code, and execute shell commands',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.grey.shade500,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
                       ],
                     ),
                   )
@@ -310,19 +352,29 @@ class _MyHomePageState extends State<MyHomePage> {
                     itemBuilder: (context, index) {
                       final message = _messages[index];
                       final isUser = message['role'] == 'user';
+                      final isError = message['role'] == 'error';
+                      
                       return Align(
                         alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                         child: Container(
-                          constraints: const BoxConstraints(maxWidth: 400),
+                          constraints: const BoxConstraints(maxWidth: 500),
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isUser
-                                ? Theme.of(context).colorScheme.primaryContainer
-                                : Theme.of(context).colorScheme.surfaceContainerHighest,
+                            color: isError
+                                ? Colors.red.shade50
+                                : isUser
+                                    ? Theme.of(context).colorScheme.primaryContainer
+                                    : Theme.of(context).colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(12),
+                            border: isError ? Border.all(color: Colors.red.shade200) : null,
                           ),
-                          child: SelectableText(message['content']!),
+                          child: SelectableText(
+                            message['content']!,
+                            style: TextStyle(
+                              color: isError ? Colors.red.shade900 : null,
+                            ),
+                          ),
                         ),
                       );
                     },
@@ -352,6 +404,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       hintText: 'Describe your task...',
                     ),
                     onSubmitted: (_) => _sendTask(),
+                    enabled: _initialized && !_busy,
                   ),
                 ),
                 const SizedBox(width: 12),
